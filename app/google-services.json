@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "293238614356",
+    "project_id": "best-system-lottery",
+    "storage_bucket": "best-system-lottery.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:293238614356:android:3959fd6f1639d0cb2380c1",
+        "android_client_info": {
+          "package_name": "com.smartxplorer.bestsystemlottery"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCfCV-wHKJlFGuT-jFmyJDP648fhXNC5IQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

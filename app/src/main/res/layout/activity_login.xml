@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="#121212">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="32dp">
+
+        <ImageView
+            android:id="@+id/imgLogoLogin"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:layout_marginTop="40dp"
+            android:layout_marginBottom="24dp"
+            android:src="@drawable/logo"
+            android:contentDescription="@string/logo" />
+
+        <TextView
+            android:id="@+id/txtAppNameLogin"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/lotato_app_name"
+            android:textColor="#FBBF24"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="24dp" />
+
+        <Spinner
+            android:id="@+id/spinnerRole"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginBottom="16dp"
+            android:background="#1E1E1E"
+            android:padding="8dp" />
+
+        <EditText
+            android:id="@+id/edtIdentifiant"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/lotato_hint_identifiant"
+            android:inputType="text"
+            android:textColorHint="#888888"
+            android:textColor="#FFFFFF"
+            android:padding="12dp"
+            android:layout_marginBottom="12dp"
+            android:background="#1E1E1E" />
+
+        <EditText
+            android:id="@+id/edtMotDePasse"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/lotato_hint_mdp"
+            android:inputType="textPassword"
+            android:textColorHint="#888888"
+            android:textColor="#FFFFFF"
+            android:padding="12dp"
+            android:layout_marginBottom="20dp"
+            android:background="#1E1E1E" />
+
+        <Button
+            android:id="@+id/btnLogin"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="@string/lotato_btn_login"
+            android:backgroundTint="#FBBF24"
+            android:textColor="#121212"
+            android:textStyle="bold" />
+
+        <ProgressBar
+            android:id="@+id/progressLogin"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/txtErrorLogin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textColor="#FF5252"
+            android:gravity="center"
+            android:visibility="gone" />
+
+    </LinearLayout>
+</ScrollView>

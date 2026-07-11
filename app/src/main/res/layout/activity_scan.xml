@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <!-- 🔥 CAMERA -->
+    <com.journeyapps.barcodescanner.DecoratedBarcodeView
+        android:id="@+id/barcodeView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#66000000"/>
+
+    <!-- 🔥 OVERLAY SOMBRE -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#99000000" />
+
+    <ImageView
+        android:id="@+id/imgLogo"
+        android:layout_width="170dp"
+        android:layout_height="120dp"
+        android:contentDescription="TODO"
+        android:src="@drawable/logo"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="40dp"
+        android:padding="10dp"
+        tools:ignore="ContentDescription,HardcodedText" />
+
+
+    <!-- 🔥 CADRE SCAN -->
+    <FrameLayout
+        android:layout_width="205dp"
+        android:layout_height="205dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_scan_frame">
+
+        <!-- 🔴 LASER -->
+        <View
+            android:id="@+id/laser"
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:background="#FF0000"
+            android:layout_gravity="center"/>
+    </FrameLayout>
+
+    <!-- 🔦 BOUTON FLASH -->
+    <ImageView
+        android:id="@+id/btnFlash"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:contentDescription="TODO"
+        android:src="@drawable/baseline_flash_off_24"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="40dp"
+        android:background="#66000000"
+        android:padding="10dp"
+        tools:ignore="ContentDescription,HardcodedText" />
+
+</FrameLayout>
