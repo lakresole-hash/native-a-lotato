@@ -249,7 +249,7 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void postJson(String url, JSONObject body, SimpleJsonCallback callback) {
-        RequestBody requestBody = RequestBody.create(body.toString(), JSON);
+        RequestBody requestBody = RequestBody.create(JSON, body.toString());
         Request request = new Request.Builder()
                 .url(url)
                 .post(requestBody)
