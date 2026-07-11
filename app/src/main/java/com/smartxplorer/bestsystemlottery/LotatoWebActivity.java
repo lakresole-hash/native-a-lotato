@@ -214,7 +214,7 @@ public class LotatoWebActivity extends AppCompatActivity {
 
         SmartPrinter.with(getApplicationContext(), 58).connect(smartPrinter -> {
             smartPrinter.printImage(bitmap, SmartPrinter.FULL_WIDTH, SmartPrinter.CENTER);
-            smartPrinter.feedPaper(2);
+            smartPrinter.feedPaper();
             smartPrinter.close();
         });
     }
