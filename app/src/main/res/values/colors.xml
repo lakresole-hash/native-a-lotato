@@ -5,6 +5,8 @@
     <color name="colorAccent">#82B1FF</color>
 
     <color name="colorBlue">#2196F3</color>
+    <color name="colorWhite">#ffffff</color>
+    <color name="colorBlack">#000000</color>
 
     <color name="zxing_viewfinder_laser">#FF0000</color>
     <color name="zxing_result_view">#00000000</color>
