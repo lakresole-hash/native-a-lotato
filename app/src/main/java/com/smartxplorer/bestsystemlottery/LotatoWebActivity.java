@@ -12,6 +12,8 @@ import android.os.Bundle;
 import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
@@ -26,6 +28,13 @@ import androidx.core.app.ActivityCompat;
 
 import com.smart.xplorer.SmartPrinter;
 import com.smartxplorer.bestsystemlottery.lotato.LotatoConstants;
+
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.TimeUnit;
+
+import okhttp3.OkHttpClient;
+import okhttp3.ResponseBody;
 
 import static com.smartxplorer.bestsystemlottery.util.Constant.KEY_CONNECTED_PRINTER;
 import static com.smartxplorer.bestsystemlottery.util.Constant.SHARED_PREFS;
@@ -57,6 +66,11 @@ public class LotatoWebActivity extends AppCompatActivity {
     private String pendingUrl;
     private String pendingInjectJs;
     private String pendingHtmlToPrint;
+
+    private final OkHttpClient injectionHttpClient = new OkHttpClient.Builder()
+            .connectTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .build();
 
     private ActivityResultLauncher<Intent> scanLauncher;
 
@@ -96,19 +110,65 @@ public class LotatoWebActivity extends AppCompatActivity {
         webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new WebViewClient() {
             @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                // On n'intercepte que la requête de la page principale
+                // demandée (pas les .js/.css/images/appels API), et une
+                // seule fois : on récupère nous-mêmes le HTML et on y
+                // colle notre script de session TOUT AU DÉBUT, avant que
+                // le <script> de la page (qui vérifie le token) ne
+                // s'exécute. Ça évite la redirection vers index.html
+                // qui se produisait quand l'injection arrivait trop tard.
+                if (!sessionInjected
+                        && pendingInjectJs != null && !pendingInjectJs.isEmpty()
+                        && request.isForMainFrame()
+                        && request.getUrl().toString().equals(pendingUrl)) {
+                    WebResourceResponse injected = fetchAndInjectSession(request.getUrl().toString());
+                    if (injected != null) {
+                        sessionInjected = true;
+                        return injected;
+                    }
+                }
+                return super.shouldInterceptRequest(view, request);
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 progressBar.setVisibility(View.GONE);
-
-                if (!sessionInjected && pendingInjectJs != null && !pendingInjectJs.isEmpty()) {
-                    sessionInjected = true;
-                    // On applique la session déjà obtenue en natif puis on
-                    // recharge une fois pour que le site se comporte comme
-                    // si l'utilisateur venait de se connecter normalement.
-                    view.evaluateJavascript(pendingInjectJs, value -> view.postDelayed(view::reload, 150));
-                }
             }
         });
+    }
+
+    /**
+     * Télécharge le HTML de la page cible et insère un &lt;script&gt; contenant
+     * l'injection de session juste après &lt;head&gt; (ou tout au début si pas
+     * de &lt;head&gt;). Retourne null en cas d'échec réseau, pour laisser la
+     * WebView charger la page normalement (repli).
+     */
+    @Nullable
+    private WebResourceResponse fetchAndInjectSession(String url) {
+        try {
+            okhttp3.Request request = new okhttp3.Request.Builder().url(url).build();
+            okhttp3.Response response = injectionHttpClient.newCall(request).execute();
+            ResponseBody body = response.body();
+            if (!response.isSuccessful() || body == null) {
+                return null;
+            }
+            String html = body.string();
+            String scriptTag = "<script>" + pendingInjectJs + "</script>";
+            String injectedHtml;
+            if (html.contains("<head>")) {
+                injectedHtml = html.replaceFirst("<head>", "<head>" + scriptTag);
+            } else if (html.toLowerCase().contains("<html>")) {
+                injectedHtml = html.replaceFirst("(?i)<html>", "<html>" + scriptTag);
+            } else {
+                injectedHtml = scriptTag + html;
+            }
+            return new WebResourceResponse("text/html", "UTF-8",
+                    new ByteArrayInputStream(injectedHtml.getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception e) {
+            return null; // repli : la page se chargera normalement (sans session pré-injectée)
+        }
     }
 
     @Override
@@ -180,6 +240,11 @@ public class LotatoWebActivity extends AppCompatActivity {
         hidden.getSettings().setJavaScriptEnabled(true);
         hidden.getSettings().setLoadWithOverviewMode(true);
         hidden.getSettings().setUseWideViewPort(true);
+        // Indispensable : sans ça, une WebView positionnée hors-écran ne
+        // dessine pas sa couche accélérée matériellement, et view.draw()
+        // capture une image blanche. Le rendu logiciel force un vrai dessin
+        // dans le canvas, même hors-écran.
+        hidden.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
 
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(PRINTER_WIDTH_PX, FrameLayout.LayoutParams.WRAP_CONTENT);
         hidden.setLayoutParams(params);
@@ -189,17 +254,26 @@ public class LotatoWebActivity extends AppCompatActivity {
         hidden.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
-                view.postDelayed(() -> captureAndPrint(view), 350);
+                // Un premier délai pour laisser le CSS/les images se mettre en place,
+                // puis on vérifie que le contenu a une hauteur avant de capturer ;
+                // sinon on retente une fois après un délai plus long.
+                view.postDelayed(() -> attemptCapture(view, 0), 400);
             }
         });
 
         hidden.loadDataWithBaseURL(LotatoConstants.BASE_URL, html, "text/html", "UTF-8", null);
     }
 
-    private void captureAndPrint(WebView view) {
+    private void attemptCapture(WebView view, int retryCount) {
         int contentHeightPx = (int) (view.getContentHeight() * view.getScale());
-        if (contentHeightPx <= 0) contentHeightPx = 1000;
+        if (contentHeightPx <= 0 && retryCount < 3) {
+            view.postDelayed(() -> attemptCapture(view, retryCount + 1), 400);
+            return;
+        }
+        captureAndPrint(view, contentHeightPx > 0 ? contentHeightPx : 1000);
+    }
 
+    private void captureAndPrint(WebView view, int contentHeightPx) {
         int widthSpec = View.MeasureSpec.makeMeasureSpec(PRINTER_WIDTH_PX, View.MeasureSpec.EXACTLY);
         int heightSpec = View.MeasureSpec.makeMeasureSpec(contentHeightPx, View.MeasureSpec.EXACTLY);
         view.measure(widthSpec, heightSpec);

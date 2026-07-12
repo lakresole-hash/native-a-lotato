@@ -4,17 +4,16 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ProgressBar;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.material.chip.ChipGroup;
 import com.smartxplorer.bestsystemlottery.lotato.LotatoConstants;
 
 import org.json.JSONException;
@@ -45,15 +44,7 @@ public class LoginActivity extends AppCompatActivity {
 
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
-    private static final String[] ROLE_LABELS_KEYS = {
-            "lotato_role_agent",
-            "lotato_role_supervisor",
-            "lotato_role_owner",
-            "lotato_role_superadmin",
-            "lotato_role_player"
-    };
-
-    private Spinner spinnerRole;
+    private ChipGroup chipGroupRole;
     private EditText edtIdentifiant;
     private EditText edtMotDePasse;
     private Button btnLogin;
@@ -70,40 +61,32 @@ public class LoginActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        spinnerRole = findViewById(R.id.spinnerRole);
+        chipGroupRole = findViewById(R.id.chipGroupRole);
         edtIdentifiant = findViewById(R.id.edtIdentifiant);
         edtMotDePasse = findViewById(R.id.edtMotDePasse);
         btnLogin = findViewById(R.id.btnLogin);
         progressLogin = findViewById(R.id.progressLogin);
         txtErrorLogin = findViewById(R.id.txtErrorLogin);
 
-        String[] roleLabels = new String[]{
-                getString(R.string.lotato_role_agent),
-                getString(R.string.lotato_role_supervisor),
-                getString(R.string.lotato_role_owner),
-                getString(R.string.lotato_role_superadmin),
-                getString(R.string.lotato_role_player)
-        };
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, roleLabels);
-        spinnerRole.setAdapter(adapter);
-
         updateIdentifiantHint();
-        spinnerRole.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
-                updateIdentifiantHint();
-            }
-
-            @Override
-            public void onNothingSelected(android.widget.AdapterView<?> parent) {
-            }
-        });
+        chipGroupRole.setOnCheckedStateChangeListener((group, checkedIds) -> updateIdentifiantHint());
 
         btnLogin.setOnClickListener(v -> attemptLogin());
     }
 
+    /** 0=agent, 1=superviseur, 2=propriétaire, 3=superadmin, 4=joueur */
+    private int getSelectedRolePosition() {
+        int checkedId = chipGroupRole.getCheckedChipId();
+        if (checkedId == R.id.chipAgent) return 0;
+        if (checkedId == R.id.chipSupervisor) return 1;
+        if (checkedId == R.id.chipOwner) return 2;
+        if (checkedId == R.id.chipSuperadmin) return 3;
+        if (checkedId == R.id.chipPlayer) return 4;
+        return 0;
+    }
+
     private void updateIdentifiantHint() {
-        int position = spinnerRole.getSelectedItemPosition();
+        int position = getSelectedRolePosition();
         // Le rôle "Joueur" (index 4) se connecte par numéro de téléphone.
         if (position == 4) {
             edtIdentifiant.setHint(getString(R.string.lotato_hint_identifiant) + " (téléphone)");
@@ -121,7 +104,7 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
-        int position = spinnerRole.getSelectedItemPosition();
+        int position = getSelectedRolePosition();
         setLoading(true);
 
         try {
