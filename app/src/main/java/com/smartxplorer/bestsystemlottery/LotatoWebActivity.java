@@ -56,6 +56,12 @@ import static com.smartxplorer.bestsystemlottery.util.Constant.SHARED_PREFS;
 public class LotatoWebActivity extends AppCompatActivity {
 
     private static final int PRINTER_WIDTH_PX = 384; // ~ 58mm à 203dpi, à ajuster selon l'imprimante
+    // Le ticket HTML (cartManager.js) est conçu en dur pour du papier 80mm
+    // (body { width: 76mm }). Sur une imprimante 58mm (ex. Sunmi V2s), ce
+    // contenu reste petit et laisse des marges vides. On zoome le rendu pour
+    // qu'il remplisse toute la largeur réelle du papier 58mm.
+    // 384px (notre capture) / ~287px (76mm à 96dpi) ≈ 1.34
+    private static final float PRINT_ZOOM_FACTOR = 1.3f;
     private static final int REQUEST_BLUETOOTH_PERMS = 501;
     private static final int REQUEST_CAMERA_PERM = 502;
 
@@ -269,7 +275,22 @@ public class LotatoWebActivity extends AppCompatActivity {
             }
         });
 
-        hidden.loadDataWithBaseURL(LotatoConstants.BASE_URL, html, "text/html", "UTF-8", null);
+        hidden.loadDataWithBaseURL(LotatoConstants.BASE_URL, applyPrintZoom(html), "text/html", "UTF-8", null);
+    }
+
+    /**
+     * Insère un style forçant un zoom sur le corps du ticket, pour qu'il
+     * remplisse toute la largeur du papier 58mm au lieu de rester petit
+     * (le ticket est conçu en dur pour du papier 80mm côté site web).
+     */
+    private String applyPrintZoom(String html) {
+        String zoomStyle = "<style>body{zoom:" + PRINT_ZOOM_FACTOR + " !important;}</style>";
+        if (html.contains("</head>")) {
+            return html.replaceFirst("</head>", zoomStyle + "</head>");
+        } else if (html.toLowerCase().contains("<html>")) {
+            return html.replaceFirst("(?i)<html>", "<html><head>" + zoomStyle + "</head>");
+        }
+        return zoomStyle + html;
     }
 
     private void attemptCapture(WebView view, int retryCount) {
