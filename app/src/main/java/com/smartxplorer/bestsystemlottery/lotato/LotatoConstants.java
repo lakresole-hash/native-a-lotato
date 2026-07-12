@@ -15,6 +15,7 @@ public class LotatoConstants {
 
     // Pages web par rôle
     public static final String PAGE_AGENT = BASE_URL + "/agent1.html";
+    public static final String PAGE_SUPERVISOR = BASE_URL + "/responsable.html";
     public static final String PAGE_OWNER = BASE_URL + "/owner.html";
     public static final String PAGE_SUPERADMIN = BASE_URL + "/superadmin.html";
     public static final String PAGE_PLAYER = BASE_URL + "/player.html";

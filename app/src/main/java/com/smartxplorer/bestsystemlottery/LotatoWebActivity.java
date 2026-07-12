@@ -238,8 +238,16 @@ public class LotatoWebActivity extends AppCompatActivity {
     private void renderHtmlAndPrint(String html) {
         WebView hidden = new WebView(this);
         hidden.getSettings().setJavaScriptEnabled(true);
-        hidden.getSettings().setLoadWithOverviewMode(true);
-        hidden.getSettings().setUseWideViewPort(true);
+        // IMPORTANT : ne PAS activer "overview mode" / "wide viewport" ici.
+        // Ces réglages servent à zoomer une page web pour qu'elle rentre à
+        // l'écran d'un téléphone — appliqués à notre rendu de ticket, ils
+        // réduisaient tout le contenu (texte minuscule sur le papier).
+        // On veut un rendu 1 pixel CSS = 1 pixel, à la largeur exacte de
+        // l'imprimante.
+        hidden.getSettings().setLoadWithOverviewMode(false);
+        hidden.getSettings().setUseWideViewPort(false);
+        hidden.getSettings().setTextZoom(100); // ignore la taille de police système du téléphone
+        hidden.setInitialScale(100);
         // Indispensable : sans ça, une WebView positionnée hors-écran ne
         // dessine pas sa couche accélérée matériellement, et view.draw()
         // capture une image blanche. Le rendu logiciel force un vrai dessin

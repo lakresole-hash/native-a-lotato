@@ -24,12 +24,12 @@
             android:layout_marginBottom="18dp"
             app:cardCornerRadius="20dp"
             app:cardElevation="8dp"
-            app:cardBackgroundColor="#1E1E1E">
+            app:cardBackgroundColor="#FFFFFF">
 
             <ImageView
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:padding="14dp"
+                android:padding="10dp"
                 android:src="@drawable/logo"
                 android:contentDescription="@string/logo" />
         </androidx.cardview.widget.CardView>
@@ -49,7 +49,7 @@
             android:layout_marginTop="4dp"
             android:layout_marginBottom="28dp"
             android:text="@string/lotato_tagline"
-            android:textColor="#B0B0B0"
+            android:textColor="#D8CCF0"
             android:textSize="13sp" />
 
         <androidx.cardview.widget.CardView
@@ -57,81 +57,13 @@
             android:layout_height="wrap_content"
             app:cardCornerRadius="24dp"
             app:cardElevation="10dp"
-            app:cardBackgroundColor="#1A1A1A">
+            app:cardBackgroundColor="#FFFFFF">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:padding="22dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="10dp"
-                    android:text="@string/lotato_role_label"
-                    android:textColor="#9E9E9E"
-                    android:textSize="12sp"
-                    android:textAllCaps="true"
-                    android:letterSpacing="0.08" />
-
-                <com.google.android.material.chip.ChipGroup
-                    android:id="@+id/chipGroupRole"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="18dp"
-                    app:singleSelection="true"
-                    app:selectionRequired="true"
-                    app:chipSpacingHorizontal="6dp"
-                    app:chipSpacingVertical="6dp">
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chipAgent"
-                        style="@style/Widget.MaterialComponents.Chip.Choice"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:checked="true"
-                        android:text="@string/lotato_role_agent"
-                        app:chipBackgroundColor="@color/chip_bg_selector"
-                        android:textColor="@color/chip_text_selector" />
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chipSupervisor"
-                        style="@style/Widget.MaterialComponents.Chip.Choice"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/lotato_role_supervisor"
-                        app:chipBackgroundColor="@color/chip_bg_selector"
-                        android:textColor="@color/chip_text_selector" />
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chipOwner"
-                        style="@style/Widget.MaterialComponents.Chip.Choice"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/lotato_role_owner_short"
-                        app:chipBackgroundColor="@color/chip_bg_selector"
-                        android:textColor="@color/chip_text_selector" />
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chipSuperadmin"
-                        style="@style/Widget.MaterialComponents.Chip.Choice"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/lotato_role_superadmin_short"
-                        app:chipBackgroundColor="@color/chip_bg_selector"
-                        android:textColor="@color/chip_text_selector" />
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chipPlayer"
-                        style="@style/Widget.MaterialComponents.Chip.Choice"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/lotato_role_player"
-                        app:chipBackgroundColor="@color/chip_bg_selector"
-                        android:textColor="@color/chip_text_selector" />
-
-                </com.google.android.material.chip.ChipGroup>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/layoutIdentifiant"
@@ -143,11 +75,11 @@
                     app:boxCornerRadiusTopEnd="14dp"
                     app:boxCornerRadiusBottomStart="14dp"
                     app:boxCornerRadiusBottomEnd="14dp"
-                    app:boxStrokeColor="#FBBF24"
-                    app:hintTextColor="#FBBF24"
-                    android:textColorHint="#888888"
+                    app:boxStrokeColor="#6D28D9"
+                    app:hintTextColor="#6D28D9"
+                    android:textColorHint="#9E9E9E"
                     app:startIconDrawable="@drawable/ic_person"
-                    app:startIconTint="#888888">
+                    app:startIconTint="#6D28D9">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/edtIdentifiant"
@@ -155,7 +87,7 @@
                         android:layout_height="wrap_content"
                         android:hint="@string/lotato_hint_identifiant"
                         android:inputType="text"
-                        android:textColor="#FFFFFF" />
+                        android:textColor="#1A1A1A" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -168,13 +100,13 @@
                     app:boxCornerRadiusTopEnd="14dp"
                     app:boxCornerRadiusBottomStart="14dp"
                     app:boxCornerRadiusBottomEnd="14dp"
-                    app:boxStrokeColor="#FBBF24"
-                    app:hintTextColor="#FBBF24"
-                    android:textColorHint="#888888"
+                    app:boxStrokeColor="#6D28D9"
+                    app:hintTextColor="#6D28D9"
+                    android:textColorHint="#9E9E9E"
                     app:startIconDrawable="@drawable/ic_lock"
-                    app:startIconTint="#888888"
+                    app:startIconTint="#6D28D9"
                     app:passwordToggleEnabled="true"
-                    app:passwordToggleTint="#888888">
+                    app:passwordToggleTint="#6D28D9">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/edtMotDePasse"
@@ -182,7 +114,7 @@
                         android:layout_height="wrap_content"
                         android:hint="@string/lotato_hint_mdp"
                         android:inputType="textPassword"
-                        android:textColor="#FFFFFF" />
+                        android:textColor="#1A1A1A" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <FrameLayout
@@ -197,8 +129,8 @@
                         android:textAllCaps="false"
                         android:textSize="16sp"
                         android:textStyle="bold"
-                        android:backgroundTint="#FBBF24"
-                        android:textColor="#121212"
+                        android:backgroundTint="#6D28D9"
+                        android:textColor="#FFFFFF"
                         app:cornerRadius="14dp" />
 
                     <ProgressBar
@@ -206,7 +138,7 @@
                         android:layout_width="26dp"
                         android:layout_height="26dp"
                         android:layout_gravity="center"
-                        android:indeterminateTint="#121212"
+                        android:indeterminateTint="#FFFFFF"
                         android:visibility="gone" />
                 </FrameLayout>
 
@@ -215,7 +147,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="14dp"
-                    android:textColor="#FF6B6B"
+                    android:textColor="#DC2626"
                     android:textSize="13sp"
                     android:gravity="center"
                     android:visibility="gone" />
@@ -234,7 +166,7 @@
             android:layout_marginTop="12dp"
             android:layout_marginBottom="16dp"
             android:text="@string/lotato_footer"
-            android:textColor="#5A5A5A"
+            android:textColor="#9F87C4"
             android:textSize="11sp" />
 
     </LinearLayout>
