@@ -16,6 +16,7 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
@@ -61,7 +62,7 @@ public class LotatoWebActivity extends AppCompatActivity {
     // contenu reste petit et laisse des marges vides. On zoome le rendu pour
     // qu'il remplisse toute la largeur réelle du papier 58mm.
     // 384px (notre capture) / ~287px (76mm à 96dpi) ≈ 1.34
-    private static final float PRINT_ZOOM_FACTOR = 1.3f;
+    private static final float PRINT_ZOOM_FACTOR = 1.5f;
     private static final int REQUEST_BLUETOOTH_PERMS = 501;
     private static final int REQUEST_CAMERA_PERM = 502;
 
@@ -74,9 +75,13 @@ public class LotatoWebActivity extends AppCompatActivity {
     private String pendingHtmlToPrint;
 
     private final OkHttpClient injectionHttpClient = new OkHttpClient.Builder()
-            .connectTimeout(20, TimeUnit.SECONDS)
-            .readTimeout(20, TimeUnit.SECONDS)
+            .connectTimeout(45, TimeUnit.SECONDS)
+            .readTimeout(45, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
             .build();
+
+    private View layoutNoConnection;
+    private Button btnRetryConnection;
 
     private ActivityResultLauncher<Intent> scanLauncher;
 
@@ -88,6 +93,9 @@ public class LotatoWebActivity extends AppCompatActivity {
         rootLayout = findViewById(R.id.rootLotatoLayout);
         webView = findViewById(R.id.webViewLotato);
         progressBar = findViewById(R.id.progressLotatoWeb);
+        layoutNoConnection = findViewById(R.id.layoutNoConnection);
+        btnRetryConnection = findViewById(R.id.btnRetryConnection);
+        btnRetryConnection.setOnClickListener(v -> retryLoad());
 
         pendingUrl = getIntent().getStringExtra(LotatoConstants.EXTRA_URL);
         pendingInjectJs = getIntent().getStringExtra(LotatoConstants.EXTRA_INJECT_JS);
@@ -101,13 +109,27 @@ public class LotatoWebActivity extends AppCompatActivity {
         webView.loadUrl(pendingUrl);
     }
 
+    private void retryLoad() {
+        layoutNoConnection.setVisibility(View.GONE);
+        webView.setVisibility(View.VISIBLE);
+        progressBar.setVisibility(View.VISIBLE);
+        // On réinjecte la session au prochain chargement si ce n'était pas
+        // encore fait (ex. la toute première tentative avait échoué avant
+        // même l'injection).
+        webView.loadUrl(pendingUrl);
+    }
+
     @SuppressLint({"SetJavaScriptEnabled", "JavascriptInterface"})
     private void setupWebView() {
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true); // indispensable pour localStorage
+        webView.getSettings().setDatabaseEnabled(true);
         webView.getSettings().setLoadWithOverviewMode(true);
         webView.getSettings().setUseWideViewPort(true);
         webView.getSettings().setMixedContentMode(android.webkit.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+        // Repli sur le cache si le réseau est lent/indisponible, plutôt que
+        // d'échouer immédiatement — la page se chargera depuis le cache
+        // (et le service worker du site) si une copie récente existe déjà.
         webView.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_DEFAULT);
 
         webView.addJavascriptInterface(new AndroidPrintBridge(), "AndroidPrint");
@@ -138,11 +160,30 @@ public class LotatoWebActivity extends AppCompatActivity {
             }
 
             @Override
+            public void onReceivedError(WebView view, WebResourceRequest request, android.webkit.WebResourceError error) {
+                super.onReceivedError(view, request, error);
+                // On n'affiche l'écran "pas de connexion" que si c'est la
+                // page principale qui a échoué (pas une simple image/police
+                // annexe qui n'a pas pu charger).
+                if (request.isForMainFrame()) {
+                    showNoConnectionScreen();
+                }
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 progressBar.setVisibility(View.GONE);
+                layoutNoConnection.setVisibility(View.GONE);
+                webView.setVisibility(View.VISIBLE);
             }
         });
+    }
+
+    private void showNoConnectionScreen() {
+        progressBar.setVisibility(View.GONE);
+        webView.setVisibility(View.GONE);
+        layoutNoConnection.setVisibility(View.VISIBLE);
     }
 
     /**
@@ -315,11 +356,46 @@ public class LotatoWebActivity extends AppCompatActivity {
 
         rootLayout.removeView(view);
 
+        // Le rendu web (anti-crénelé, gris clair sur les bords du texte)
+        // ressort pâle sur une imprimante thermique. On renforce le
+        // contraste pour un résultat plus foncé et net.
+        Bitmap darkened = increaseContrastForThermalPrint(bitmap);
+
         SmartPrinter.with(getApplicationContext(), 58).connect(smartPrinter -> {
-            smartPrinter.printImage(bitmap, SmartPrinter.FULL_WIDTH, SmartPrinter.CENTER);
+            smartPrinter.printImage(darkened, SmartPrinter.FULL_WIDTH, SmartPrinter.CENTER);
             smartPrinter.feedPaper();
             smartPrinter.close();
         });
+    }
+
+    /**
+     * Convertit le bitmap capturé en noir/blanc à fort contraste : tout
+     * pixel suffisamment sombre devient noir pur, le reste blanc pur.
+     * Évite le rendu pâle/grisé typique du texte anti-crénelé d'une page
+     * web une fois imprimé sur une imprimante thermique.
+     * PRINT_DARKNESS_THRESHOLD : plus la valeur est haute (0-255), plus le
+     * résultat est foncé (plus de pixels deviennent noirs).
+     */
+    private static final int PRINT_DARKNESS_THRESHOLD = 190;
+
+    private Bitmap increaseContrastForThermalPrint(Bitmap src) {
+        int width = src.getWidth();
+        int height = src.getHeight();
+        int[] pixels = new int[width * height];
+        src.getPixels(pixels, 0, width, 0, 0, width, height);
+
+        for (int i = 0; i < pixels.length; i++) {
+            int p = pixels[i];
+            int r = (p >> 16) & 0xFF;
+            int g = (p >> 8) & 0xFF;
+            int b = p & 0xFF;
+            int luminance = (int) (0.299 * r + 0.587 * g + 0.114 * b);
+            pixels[i] = luminance < PRINT_DARKNESS_THRESHOLD ? 0xFF000000 : 0xFFFFFFFF;
+        }
+
+        Bitmap result = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        result.setPixels(pixels, 0, width, 0, 0, width, height);
+        return result;
     }
 
     // ==================== Scan code-barre ====================

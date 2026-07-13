@@ -17,4 +17,47 @@
         android:layout_gravity="center"
         android:visibility="visible" />
 
+    <LinearLayout
+        android:id="@+id/layoutNoConnection"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="32dp"
+        android:background="#121212"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Connexion internet faible ou indisponible"
+            android:textColor="#FFFFFF"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Vérifiez votre connexion puis réessayez."
+            android:textColor="#B0B0B0"
+            android:textSize="13sp"
+            android:gravity="center"
+            android:layout_marginBottom="24dp" />
+
+        <Button
+            android:id="@+id/btnRetryConnection"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Réessayer"
+            android:textAllCaps="false"
+            android:backgroundTint="#6D28D9"
+            android:textColor="#FFFFFF"
+            android:paddingLeft="28dp"
+            android:paddingRight="28dp" />
+
+    </LinearLayout>
+
 </FrameLayout>

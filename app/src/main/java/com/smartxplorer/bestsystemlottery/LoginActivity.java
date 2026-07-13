@@ -52,8 +52,9 @@ public class LoginActivity extends AppCompatActivity {
     private TextView txtErrorLogin;
 
     private final OkHttpClient httpClient = new OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(45, TimeUnit.SECONDS)
+            .readTimeout(45, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
             .build();
 
     // File d'essais de connexion (un par type de compte), tentés dans l'ordre
