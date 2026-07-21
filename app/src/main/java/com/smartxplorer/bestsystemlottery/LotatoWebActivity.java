@@ -58,11 +58,10 @@ public class LotatoWebActivity extends AppCompatActivity {
 
     private static final int PRINTER_WIDTH_PX = 384; // ~ 58mm à 203dpi, à ajuster selon l'imprimante
     // Le ticket HTML (cartManager.js) est conçu en dur pour du papier 80mm
-    // (body { width: 76mm }). Sur une imprimante 58mm (ex. Sunmi V2s), ce
-    // contenu reste petit et laisse des marges vides. On zoome le rendu pour
-    // qu'il remplisse toute la largeur réelle du papier 58mm.
-    // 384px (notre capture) / ~287px (76mm à 96dpi) ≈ 1.34
-    private static final float PRINT_ZOOM_FACTOR = 1.5f;
+    // (body { width: 76mm }). On capture d'abord le ticket à cette taille
+    // "naturelle" (~76mm à 96dpi), puis on agrandit l'image obtenue jusqu'à
+    // PRINTER_WIDTH_PX pour remplir la largeur réelle du papier 58mm.
+    private static final int NATURAL_WIDTH_PX = 287;
     private static final int REQUEST_BLUETOOTH_PERMS = 501;
     private static final int REQUEST_CAMERA_PERM = 502;
 
@@ -82,6 +81,8 @@ public class LotatoWebActivity extends AppCompatActivity {
 
     private View layoutNoConnection;
     private Button btnRetryConnection;
+    private boolean firstLoadDone = false;
+    private String expectedTokenKey;
 
     private ActivityResultLauncher<Intent> scanLauncher;
 
@@ -101,6 +102,14 @@ public class LotatoWebActivity extends AppCompatActivity {
         pendingInjectJs = getIntent().getStringExtra(LotatoConstants.EXTRA_INJECT_JS);
         if (pendingUrl == null) {
             pendingUrl = LotatoConstants.PAGE_PLAYER;
+        }
+
+        if (LotatoConstants.PAGE_SUPERADMIN.equals(pendingUrl)) {
+            expectedTokenKey = "superadmin_token";
+        } else if (LotatoConstants.PAGE_PLAYER.equals(pendingUrl)) {
+            expectedTokenKey = "player_token";
+        } else {
+            expectedTokenKey = "auth_token"; // agent, superviseur, propriétaire
         }
 
         setupScanLauncher();
@@ -176,8 +185,47 @@ public class LotatoWebActivity extends AppCompatActivity {
                 progressBar.setVisibility(View.GONE);
                 layoutNoConnection.setVisibility(View.GONE);
                 webView.setVisibility(View.VISIBLE);
+
+                if (!firstLoadDone) {
+                    // Le tout premier chargement (avec la session injectée) ne
+                    // doit jamais déclencher la détection de déconnexion.
+                    firstLoadDone = true;
+                    return;
+                }
+
+                // Cas 1 : la page a redirigé vers la page de connexion du
+                // site (ex. owner.html/agent1.html/responsable.html font
+                // `window.location.href = 'index.html'` après déconnexion).
+                if (url != null && url.contains("index.html")) {
+                    goToNativeLogin();
+                    return;
+                }
+
+                // Cas 2 : la page se recharge elle-même après déconnexion
+                // (ex. player.html/superadmin.html font juste
+                // `localStorage.clear(); location.reload();`) — on vérifie
+                // si la session est toujours valide, sinon on repart sur
+                // l'écran de connexion natif au lieu du formulaire du site.
+                view.evaluateJavascript("localStorage.getItem('" + expectedTokenKey + "')", value -> {
+                    if (value == null || value.equals("null") || value.equals("\"\"")) {
+                        goToNativeLogin();
+                    }
+                });
             }
         });
+    }
+
+    /**
+     * Revient à l'écran de connexion natif (LoginActivity) au lieu de
+     * laisser le site afficher sa propre page/formulaire de connexion —
+     * pour n'avoir qu'un seul écran de connexion, cohérent, dans toute
+     * l'app.
+     */
+    private void goToNativeLogin() {
+        Intent intent = new Intent(LotatoWebActivity.this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+        finish();
     }
 
     private void showNoConnectionScreen() {
@@ -301,7 +349,12 @@ public class LotatoWebActivity extends AppCompatActivity {
         // dans le canvas, même hors-écran.
         hidden.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
 
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(PRINTER_WIDTH_PX, FrameLayout.LayoutParams.WRAP_CONTENT);
+        // On capture le ticket à sa largeur "naturelle" (celle voulue par
+        // son propre CSS, ~76mm), SANS essayer de le zoomer/redimensionner
+        // au niveau du rendu web (ça désynchronisait la mesure et causait
+        // un décalage + des bandes noires). L'agrandissement à la largeur
+        // réelle du papier se fait ensuite proprement sur l'image capturée.
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(NATURAL_WIDTH_PX, FrameLayout.LayoutParams.WRAP_CONTENT);
         hidden.setLayoutParams(params);
         hidden.setTranslationX(-10000f); // hors écran mais toujours mesuré/rendu
         rootLayout.addView(hidden);
@@ -316,22 +369,7 @@ public class LotatoWebActivity extends AppCompatActivity {
             }
         });
 
-        hidden.loadDataWithBaseURL(LotatoConstants.BASE_URL, applyPrintZoom(html), "text/html", "UTF-8", null);
-    }
-
-    /**
-     * Insère un style forçant un zoom sur le corps du ticket, pour qu'il
-     * remplisse toute la largeur du papier 58mm au lieu de rester petit
-     * (le ticket est conçu en dur pour du papier 80mm côté site web).
-     */
-    private String applyPrintZoom(String html) {
-        String zoomStyle = "<style>body{zoom:" + PRINT_ZOOM_FACTOR + " !important;}</style>";
-        if (html.contains("</head>")) {
-            return html.replaceFirst("</head>", zoomStyle + "</head>");
-        } else if (html.toLowerCase().contains("<html>")) {
-            return html.replaceFirst("(?i)<html>", "<html><head>" + zoomStyle + "</head>");
-        }
-        return zoomStyle + html;
+        hidden.loadDataWithBaseURL(LotatoConstants.BASE_URL, html, "text/html", "UTF-8", null);
     }
 
     private void attemptCapture(WebView view, int retryCount) {
@@ -344,22 +382,29 @@ public class LotatoWebActivity extends AppCompatActivity {
     }
 
     private void captureAndPrint(WebView view, int contentHeightPx) {
-        int widthSpec = View.MeasureSpec.makeMeasureSpec(PRINTER_WIDTH_PX, View.MeasureSpec.EXACTLY);
+        int widthSpec = View.MeasureSpec.makeMeasureSpec(NATURAL_WIDTH_PX, View.MeasureSpec.EXACTLY);
         int heightSpec = View.MeasureSpec.makeMeasureSpec(contentHeightPx, View.MeasureSpec.EXACTLY);
         view.measure(widthSpec, heightSpec);
-        view.layout(0, 0, PRINTER_WIDTH_PX, contentHeightPx);
+        view.layout(0, 0, NATURAL_WIDTH_PX, contentHeightPx);
 
-        Bitmap bitmap = Bitmap.createBitmap(PRINTER_WIDTH_PX, contentHeightPx, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
+        Bitmap natural = Bitmap.createBitmap(NATURAL_WIDTH_PX, contentHeightPx, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(natural);
         canvas.drawColor(Color.WHITE);
         view.draw(canvas);
 
         rootLayout.removeView(view);
 
+        // Agrandissement propre de l'image (pas du rendu web) jusqu'à la
+        // largeur réelle du papier — évite tout décalage/désynchronisation.
+        int scaledHeight = Math.round(contentHeightPx * (PRINTER_WIDTH_PX / (float) NATURAL_WIDTH_PX));
+        Bitmap scaled = Bitmap.createScaledBitmap(natural, PRINTER_WIDTH_PX, scaledHeight, true);
+        natural.recycle();
+
         // Le rendu web (anti-crénelé, gris clair sur les bords du texte)
         // ressort pâle sur une imprimante thermique. On renforce le
         // contraste pour un résultat plus foncé et net.
-        Bitmap darkened = increaseContrastForThermalPrint(bitmap);
+        Bitmap darkened = increaseContrastForThermalPrint(scaled);
+        scaled.recycle();
 
         SmartPrinter.with(getApplicationContext(), 58).connect(smartPrinter -> {
             smartPrinter.printImage(darkened, SmartPrinter.FULL_WIDTH, SmartPrinter.CENTER);
