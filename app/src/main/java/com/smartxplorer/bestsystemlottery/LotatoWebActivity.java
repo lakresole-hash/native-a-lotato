@@ -57,11 +57,12 @@ import static com.smartxplorer.bestsystemlottery.util.Constant.SHARED_PREFS;
 public class LotatoWebActivity extends AppCompatActivity {
 
     private static final int PRINTER_WIDTH_PX = 384; // ~ 58mm à 203dpi, à ajuster selon l'imprimante
-    // Le ticket HTML (cartManager.js) est conçu en dur pour du papier 80mm
-    // (body { width: 76mm }). On capture d'abord le ticket à cette taille
-    // "naturelle" (~76mm à 96dpi), puis on agrandit l'image obtenue jusqu'à
-    // PRINTER_WIDTH_PX pour remplir la largeur réelle du papier 58mm.
-    private static final int NATURAL_WIDTH_PX = 287;
+    // Le ticket HTML (cartManager.js) est conçu en dur pour du papier 80mm :
+    // body { width: 76mm; padding: 4mm; } sans box-sizing:border-box, donc la
+    // largeur réelle du bloc est 76mm + 4mm + 4mm = 84mm (~317px à 96dpi).
+    // On capture le ticket à cette taille "naturelle" complète (avec marge de
+    // sécurité), puis on agrandit l'image obtenue jusqu'à PRINTER_WIDTH_PX.
+    private static final int NATURAL_WIDTH_PX = 320;
     private static final int REQUEST_BLUETOOTH_PERMS = 501;
     private static final int REQUEST_CAMERA_PERM = 502;
 
@@ -333,6 +334,11 @@ public class LotatoWebActivity extends AppCompatActivity {
     private void renderHtmlAndPrint(String html) {
         WebView hidden = new WebView(this);
         hidden.getSettings().setJavaScriptEnabled(true);
+        // Sans fond blanc explicite, une WebView affiche du noir par défaut
+        // dans toute zone qu'elle ne peint pas réellement (marges,
+        // débordement de contenu) — c'était la cause des bandes noires en
+        // bas et à droite du ticket imprimé.
+        hidden.setBackgroundColor(Color.WHITE);
         // IMPORTANT : ne PAS activer "overview mode" / "wide viewport" ici.
         // Ces réglages servent à zoomer une page web pour qu'elle rentre à
         // l'écran d'un téléphone — appliqués à notre rendu de ticket, ils
