@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lotato_app_name">LOTATO</string>
+    <string name="lotato_tagline">Connexion à votre espace</string>
+    <string name="lotato_hint_identifiant">Nom d\'utilisateur / Téléphone</string>
+    <string name="lotato_hint_mdp">Mot de passe</string>
+    <string name="lotato_btn_login">Se connecter</string>
+    <string name="lotato_error_generic">Impossible de se connecter. Vérifiez vos identifiants et votre connexion.</string>
+    <string name="lotato_error_fields">Veuillez remplir tous les champs.</string>
+    <string name="lotato_title_web">LOTATO</string>
+    <string name="lotato_footer">LOTATO</string>
+</resources>
