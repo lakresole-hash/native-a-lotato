@@ -62,7 +62,8 @@ public class LotatoWebActivity extends AppCompatActivity {
     // largeur réelle du bloc est 76mm + 4mm + 4mm = 84mm (~317px à 96dpi).
     // On capture le ticket à cette taille "naturelle" complète (avec marge de
     // sécurité), puis on agrandit l'image obtenue jusqu'à PRINTER_WIDTH_PX.
-    private static final int NATURAL_WIDTH_PX = 320;
+    // Actuellement : 384/291 ≈ 1.32x (soit ~10% de plus qu'avant, où c'était 1.2x)
+    private static final int NATURAL_WIDTH_PX = 291;
     private static final int REQUEST_BLUETOOTH_PERMS = 501;
     private static final int REQUEST_CAMERA_PERM = 502;
 
@@ -149,22 +150,31 @@ public class LotatoWebActivity extends AppCompatActivity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                // On n'intercepte que la requête de la page principale
-                // demandée (pas les .js/.css/images/appels API), et une
-                // seule fois : on récupère nous-mêmes le HTML et on y
-                // colle notre script de session TOUT AU DÉBUT, avant que
-                // le <script> de la page (qui vérifie le token) ne
-                // s'exécute. Ça évite la redirection vers index.html
-                // qui se produisait quand l'injection arrivait trop tard.
-                if (!sessionInjected
-                        && pendingInjectJs != null && !pendingInjectJs.isEmpty()
-                        && request.isForMainFrame()
-                        && request.getUrl().toString().equals(pendingUrl)) {
-                    WebResourceResponse injected = fetchAndInjectSession(request.getUrl().toString());
-                    if (injected != null) {
-                        sessionInjected = true;
-                        return injected;
-                    }
+                if (!request.isForMainFrame()) {
+                    return super.shouldInterceptRequest(view, request);
+                }
+                String url = request.getUrl().toString();
+
+                // Sur la toute première page (celle demandée après le
+                // login natif), on colle aussi le script de session, tout
+                // au début, avant que le <script> de la page (qui vérifie
+                // le token) ne s'exécute. Ça évite la redirection vers
+                // index.html qui se produisait quand l'injection arrivait
+                // trop tard.
+                String extraScript = null;
+                if (!sessionInjected && pendingInjectJs != null && !pendingInjectJs.isEmpty() && url.equals(pendingUrl)) {
+                    extraScript = pendingInjectJs;
+                }
+
+                // Sur TOUTE page (pas seulement la première), on masque le
+                // bandeau "Installer l'application" du site (agent1.html) :
+                // il ne s'affiche que quand la page ne se croit pas déjà
+                // installée (window.navigator.standalone). Comme on est
+                // déjà dans l'app native, ce bandeau n'a plus lieu d'être.
+                WebResourceResponse injected = fetchAndInject(url, extraScript);
+                if (injected != null) {
+                    if (extraScript != null) sessionInjected = true;
+                    return injected;
                 }
                 return super.shouldInterceptRequest(view, request);
             }
@@ -236,13 +246,26 @@ public class LotatoWebActivity extends AppCompatActivity {
     }
 
     /**
-     * Télécharge le HTML de la page cible et insère un &lt;script&gt; contenant
-     * l'injection de session juste après &lt;head&gt; (ou tout au début si pas
-     * de &lt;head&gt;). Retourne null en cas d'échec réseau, pour laisser la
-     * WebView charger la page normalement (repli).
+     * Script injecté sur CHAQUE page pour qu'elle se croie déjà "installée"
+     * (comme une vraie PWA sur l'écran d'accueil), afin que le bandeau
+     * "Installer l'application" de agent1.html ne s'affiche jamais dans
+     * l'app native — il n'a plus de raison d'être puisqu'on EST déjà
+     * l'application installée.
+     */
+    private static final String STANDALONE_OVERRIDE_JS =
+            "try{Object.defineProperty(window.navigator,'standalone',{value:true,configurable:true});}catch(e){}";
+
+    /**
+     * Télécharge le HTML de la page demandée et y insère, juste après
+     * &lt;head&gt; (ou tout au début si pas de &lt;head&gt;) :
+     *  - toujours : le script qui masque le bandeau d'installation web
+     *  - en plus, une seule fois, sur la page cible du login : le script
+     *    d'injection de session (localStorage) obtenue en natif
+     * Retourne null en cas d'échec réseau, pour laisser la WebView charger
+     * la page normalement (repli).
      */
     @Nullable
-    private WebResourceResponse fetchAndInjectSession(String url) {
+    private WebResourceResponse fetchAndInject(String url, @Nullable String extraScript) {
         try {
             okhttp3.Request request = new okhttp3.Request.Builder().url(url).build();
             okhttp3.Response response = injectionHttpClient.newCall(request).execute();
@@ -251,7 +274,9 @@ public class LotatoWebActivity extends AppCompatActivity {
                 return null;
             }
             String html = body.string();
-            String scriptTag = "<script>" + pendingInjectJs + "</script>";
+            String scriptTag = "<script>" + STANDALONE_OVERRIDE_JS
+                    + (extraScript != null ? extraScript : "")
+                    + "</script>";
             String injectedHtml;
             if (html.contains("<head>")) {
                 injectedHtml = html.replaceFirst("<head>", "<head>" + scriptTag);
@@ -263,7 +288,7 @@ public class LotatoWebActivity extends AppCompatActivity {
             return new WebResourceResponse("text/html", "UTF-8",
                     new ByteArrayInputStream(injectedHtml.getBytes(StandardCharsets.UTF_8)));
         } catch (Exception e) {
-            return null; // repli : la page se chargera normalement (sans session pré-injectée)
+            return null; // repli : la page se chargera normalement (sans les injections)
         }
     }
 
