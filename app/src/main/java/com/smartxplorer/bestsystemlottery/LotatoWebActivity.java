@@ -62,8 +62,17 @@ public class LotatoWebActivity extends AppCompatActivity {
     // largeur réelle du bloc est 76mm + 4mm + 4mm = 84mm (~317px à 96dpi).
     // On capture le ticket à cette taille "naturelle" complète (avec marge de
     // sécurité), puis on agrandit l'image obtenue jusqu'à PRINTER_WIDTH_PX.
-    // Actuellement : 384/291 ≈ 1.32x (soit ~10% de plus qu'avant, où c'était 1.2x)
-    private static final int NATURAL_WIDTH_PX = 291;
+    // Largeur de capture "sûre" : doit toujours être AU MOINS aussi large
+    // que le contenu réel du ticket (~317px à cause du padding CSS), sinon
+    // le bord droit est coupé (trait noir). Le facteur d'agrandissement
+    // (BIGGER_FACTOR ci-dessous) gère le "plus gros" séparément, sans
+    // jamais réduire cette largeur de capture.
+    private static final int NATURAL_WIDTH_PX = 320;
+    // Agrandissement supplémentaire par rapport à la taille normale (1.0 =
+    // taille normale, 1.10 = +10%). Le surplus de largeur est recadré au
+    // centre avant impression, donc jamais de trait noir ni de décalage —
+    // seuls les bords (marge/bordure) sont légèrement rognés.
+    private static final float BIGGER_FACTOR = 1.10f;
     private static final int REQUEST_BLUETOOTH_PERMS = 501;
     private static final int REQUEST_CAMERA_PERM = 502;
 
@@ -425,11 +434,19 @@ public class LotatoWebActivity extends AppCompatActivity {
 
         rootLayout.removeView(view);
 
-        // Agrandissement propre de l'image (pas du rendu web) jusqu'à la
-        // largeur réelle du papier — évite tout décalage/désynchronisation.
-        int scaledHeight = Math.round(contentHeightPx * (PRINTER_WIDTH_PX / (float) NATURAL_WIDTH_PX));
-        Bitmap scaled = Bitmap.createScaledBitmap(natural, PRINTER_WIDTH_PX, scaledHeight, true);
+        // On agrandit un peu plus que la largeur du papier (BIGGER_FACTOR),
+        // puis on recadre le centre exactement à la largeur du papier.
+        // Résultat : le contenu apparaît plus gros, sans jamais désaligner
+        // ni couper le bord droit (contrairement à réduire NATURAL_WIDTH_PX,
+        // qui recoupait le contenu réel du ticket).
+        int targetWidth = Math.round(PRINTER_WIDTH_PX * BIGGER_FACTOR);
+        int targetHeight = Math.round(contentHeightPx * (targetWidth / (float) NATURAL_WIDTH_PX));
+        Bitmap enlarged = Bitmap.createScaledBitmap(natural, targetWidth, targetHeight, true);
         natural.recycle();
+
+        int cropX = Math.max(0, (targetWidth - PRINTER_WIDTH_PX) / 2);
+        Bitmap scaled = Bitmap.createBitmap(enlarged, cropX, 0, PRINTER_WIDTH_PX, targetHeight);
+        enlarged.recycle();
 
         // Le rendu web (anti-crénelé, gris clair sur les bords du texte)
         // ressort pâle sur une imprimante thermique. On renforce le
